@@ -8,8 +8,8 @@ VERSION=`cat version`
 
 rm -rf deb_dist
 python setup.py --command-packages=stdeb.command sdist_dsc
-cd deb_dist/pdf-redact-tools-$VERSION
+cd deb_dist/redact-pdf-$VERSION
 dpkg-buildpackage -S
 cd ..
-dput ppa:micahflee/ppa pdf-redact-tools_$VERSION-1_source.changes
+dput ppa:micahflee/ppa redact-pdf_$VERSION-1_source.changes
 cd ..

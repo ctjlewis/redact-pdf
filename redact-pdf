@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PDF Redact Tools | https://github.com/micahflee/pdf-redact-tools
+PDF Redact Tools | https://github.com/micahflee/redact-pdf
 
 Copyright (C) 2014-2015 Micah Lee <micah@micahflee.com>
 
@@ -18,10 +18,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import sys, os, subprocess, argparse, shutil
+import sys
+import os
+import subprocess
+import argparse
+import shutil
+
 
 class PDFRedactTools(object):
-    def __init__(self, pdf_filename = None):
+    def __init__(self, pdf_filename=None):
         if pdf_filename:
             self.set_pdf_filename(pdf_filename)
         else:
@@ -35,31 +40,36 @@ class PDFRedactTools(object):
         split = os.path.splitext(self.pdf_filename)
         self.pages_dirname = split[0] + '_pages'
 
-        self.transparent_filename = os.path.join(self.pages_dirname, 'page-transparent.png')
+        self.transparent_filename = os.path.join(
+            self.pages_dirname, 'page-transparent.png')
 
-    def explode(self, achromatic = False):
+    def explode(self, density, achromatic=False):
         if not self.pdf_filename:
-            print 'Error: you must call set_pdf_filename before calling explode'
+            print('Error: you must call set_pdf_filename before calling explode')
             return False
 
         # make dir for pages
         if os.path.isdir(self.pages_dirname):
-            print 'Error: the directory {} already exists, you must delete it before exploding'.format(self.pages_dirname)
+            print('Error: the directory {} already exists, you must delete it before exploding'.format(
+                self.pages_dirname))
             return False
         else:
-            os.makedirs(self.pages_dirname, 0700)
+            os.makedirs(self.pages_dirname, 0o700)
 
         # convert PDF to PNGs
-        print 'Converting PDF to PNGs'
-        subprocess.call([ 'convert',
-            '-density', '128',
+        print('Converting PDF to PNGs')
+        subprocess.call([
+            'convert',
+            '-colorspace', 'RGB',
+            '-density', str(density),
             self.pdf_filename,
             '-quality', '100',
             '-sharpen', '0x1.0',
-            self.transparent_filename])
+            'PNG32:{}'.format(self.transparent_filename)
+        ])
 
         # flatten all the PNGs, so they don't have transparent backgrounds
-        print 'Flattening PNGs'
+        print('Flattening PNGs')
         filenames = os.listdir(self.pages_dirname)
         for filename in filenames:
             if os.path.splitext(filename)[1].lower() == '.png':
@@ -70,35 +80,45 @@ class PDFRedactTools(object):
                 else:
                     new_filename = filename.replace('-transparent-', '-')
 
-                subprocess.call(['convert',
+                subprocess.call([
+                    'convert',
                     os.path.join(self.pages_dirname, filename),
                     '-flatten',
-                    os.path.join(self.pages_dirname, new_filename)])
+                    os.path.join(self.pages_dirname, new_filename)
+                ])
                 os.remove(os.path.join(self.pages_dirname, filename))
 
         # convert images to achromatic to remove printer dots
         if achromatic:
-            print 'Converting colors to achromatic'
+            print('Converting colors to achromatic')
             filenames = os.listdir(self.pages_dirname)
             for filename in filenames:
                 if os.path.splitext(filename)[1].lower() == '.png':
                     # add '-bw' suffix to temporary file
                     new_filename = filename.replace('.png', '-bw.png')
 
-                    subprocess.call(['convert',
-                        os.path.join(self.pages_dirname, filename),
+                    subprocess.call([
+                        'convert',
+                        os.path.join(
+                            self.pages_dirname, filename
+                        ),
                         '-threshold', '75%',
-                        os.path.join(self.pages_dirname, new_filename)])
+                        os.path.join(
+                            self.pages_dirname, new_filename
+                        )
+                    ])
                     # remove original files
                     os.remove(os.path.join(self.pages_dirname, filename))
                     # rename files with the '-bw.png' suffix to '.png'
-                    os.rename(os.path.join(self.pages_dirname, new_filename), os.path.join(self.pages_dirname, filename))
+                    os.rename(os.path.join(self.pages_dirname, new_filename),
+                              os.path.join(self.pages_dirname, filename))
 
         # rename files to sort alphabetically instead of just numerically
         numbers = []
         filenames = os.listdir(self.pages_dirname)
         filenames.sort()
-        filename_template = os.path.join(self.pages_dirname, filenames[0].replace('-0.png', '-{}.png'))
+        filename_template = os.path.join(
+            self.pages_dirname, filenames[0].replace('-0.png', '-{}.png'))
         for filename in filenames:
             n = int(filename.split('.png')[0].split('-')[-1])
             numbers.append(n)
@@ -108,61 +128,91 @@ class PDFRedactTools(object):
             cur_digits = len(str(n))
             if cur_digits < digits:
                 new_n = '0'*(digits - cur_digits) + str(n)
-                os.rename(filename_template.format(n), filename_template.format(new_n))
+                os.rename(filename_template.format(n),
+                          filename_template.format(new_n))
 
         return True
 
     def merge(self):
         if not self.pdf_filename:
-            print 'Error: you must call set_pdf_filename before calling merge'
+            print('Error: you must call set_pdf_filename before calling merge')
             return False
 
         # make sure pages directory exists
         if not os.path.isdir(self.pages_dirname):
-            print "Error: {} is not a directory".format(pages_dirname)
+            print(f'Error: {pages_dirname} is not a directory')
             return False
 
         # convert PNGs to PDF
-        print "Converting PNGs to PDF"
-        subprocess.call(['convert',
+        print('Converting PNGs to PDF')
+        subprocess.call([
+            'convert',
             os.path.join(self.pages_dirname, 'page-*.png'),
-            self.output_filename])
+            self.output_filename
+        ])
 
         # strip metadata
-        print "Stripping ImageMagick metadata"
-        subprocess.call(['exiftool', '-Title=', '-Producer=', self.output_filename])
+        print('Stripping ImageMagick metadata')
+        subprocess.call([
+            'exiftool',
+            '-Title=',
+            '-Producer=',
+            self.output_filename
+        ])
         os.remove('{0}_original'.format(self.output_filename))
 
         return True
+
 
 def parse_arguments():
     def require_pdf(fname):
         ext = os.path.splitext(fname)[1][1:]
         if ext.lower() != 'pdf':
-           parser.error("file must be a PDF")
+            parser.error("file must be a PDF")
         if not os.path.isfile(fname):
             parser.error("{} does not exist".format(fname))
         return fname
 
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-e', '--explode',
-            metavar='filename', dest='explode_filename',
-            type=lambda s:require_pdf(s),
-            help='Explode a PDF into PNGs')
-    group.add_argument('-m', '--merge',
-            metavar='filename', dest='merge_filename',
-            type=lambda s:require_pdf(s),
-            help='Merge a folder of PNGs into a PDF')
-    group.add_argument('-s', '--sanitize',
-            metavar='filename', dest='sanitize_filename',
-            type=lambda s:require_pdf(s),
-            help='Sanitize a PDF')
-    parser.add_argument('-a', '--achromatic',
-            action='store_true',
-            help='Convert to black and white to remove printer dots')
+    group.add_argument(
+        '-e',
+        '--explode',
+        metavar='filename', dest='explode_filename',
+        type=lambda s: require_pdf(s),
+        help='Explode a PDF into PNGs'
+    )
+    group.add_argument(
+        '-m',
+        '--merge',
+        metavar='filename', dest='merge_filename',
+        type=lambda s: require_pdf(s),
+        help='Merge a folder of PNGs into a PDF'
+    )
+    group.add_argument(
+        '-s',
+        '--sanitize',
+        metavar='filename', dest='sanitize_filename',
+        type=lambda s: require_pdf(s),
+        help='Sanitize a PDF'
+    )
+    parser.add_argument(
+        '-d',
+        '--density',
+        metavar='density',
+        default=300,
+        type=int,
+        help='Override the DPI of the scan'
+    )
+    parser.add_argument(
+        '-a',
+        '--achromatic',
+        action='store_true',
+        help='Convert to black and white to remove printer dots'
+    )
     args = parser.parse_args()
     return args
+
 
 def valid_pdf(filename):
     # Reject filenames that start with '-', to avoid ImageMagick command injection
@@ -170,19 +220,25 @@ def valid_pdf(filename):
         return False
 
     # Make sure the file's mime type is 'application/pdf'
-    return subprocess.check_output(['file',
+    result = subprocess.check_output([
+        'file',
         '-b',
         '--mime-type',
-        filename]).strip() == 'application/pdf'
+        filename
+    ]).strip()
+
+    valid = result == b'application/pdf'
+    return valid
 
 
 def main():
-    # parse arguements
+    # parse arguments
     args = parse_arguments()
     explode_filename = args.explode_filename
     merge_filename = args.merge_filename
     sanitize_filename = args.sanitize_filename
     achromatic = args.achromatic
+    density = args.density
 
     pdfrt = PDFRedactTools()
 
@@ -190,32 +246,51 @@ def main():
     if explode_filename:
         if valid_pdf(explode_filename):
             pdfrt.set_pdf_filename(explode_filename)
-            if pdfrt.explode(achromatic):
-                print 'All done, now go edit PNGs in {} to redact and then run: pdf-redact-tools -m {}'.format(pdfrt.pages_dirname, pdfrt.pdf_filename)
+            if pdfrt.explode(density, achromatic):
+                print()
+                print(f'All done, now go edit PNGs in {pdfrt.pages_dirname} to redact and then run:')
+                print(f'redact-pdf -m {pdfrt.pdf_filename}')
         else:
-            print explode_filename,' does not appear to be a PDF file, will not process'
+            print(
+                explode_filename,
+                ' does not appear to be a PDF file, will not process'
+            )
 
     # merge
     if merge_filename:
         if valid_pdf(merge_filename):
             pdfrt.set_pdf_filename(merge_filename)
             if pdfrt.merge():
-                print "All done, your final output is {}".format(pdfrt.output_filename)
+                print(
+                    "All done, your final output is {}".format(
+                        pdfrt.output_filename)
+                )
         else:
-            print merge_filename,' does not appear to be a PDF file, will not process'
+            print(
+                merge_filename,
+                ' does not appear to be a PDF file, will not process'
+            )
 
     # sanitize
     if sanitize_filename:
         if valid_pdf(sanitize_filename):
             pdfrt.set_pdf_filename(sanitize_filename)
-            if pdfrt.explode(achromatic):
+            if pdfrt.explode(density, achromatic):
                 if pdfrt.merge():
                     # delete temp files
                     shutil.rmtree(pdfrt.pages_dirname)
 
-                    print "All done, your final output is {}".format(pdfrt.output_filename)
+                    print(
+                        "All done, your final output is {}".format(
+                            pdfrt.output_filename
+                        )
+                    )
         else:
-            print sanitize_filename,' does not appear to be a PDF file, will not process'
+            print(
+                sanitize_filename,
+                ' does not appear to be a PDF file, will not process'
+            )
+
 
 if __name__ == '__main__':
     main()

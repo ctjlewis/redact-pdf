@@ -3,8 +3,8 @@
 First, get a copy of the source code.
 
 ```sh
-git clone https://github.com/micahflee/pdf-redact-tools.git
-cd pdf-redact-tools
+git clone https://github.com/micahflee/redact-pdf.git
+cd redact-pdf
 ```
 
 ### Debian-based Linux (Debian, Ubuntu, Mint, etc.)
@@ -19,7 +19,7 @@ Create a .deb and install it:
 
 ```sh
 ./build_deb.sh
-sudo dpkg -i deb_dist/pdf-redact-tools_*-1_all.deb
+sudo dpkg -i deb_dist/redact-pdf_*-1_all.deb
 ```
 
 ### Red Hat-based Linux (Red Hat, Fedora, CentOS, etc.)
@@ -34,7 +34,7 @@ Create a .rpm and install it:
 
 ```sh
 ./build_rpm.sh
-sudo dnf install dist/pdf-redact-tools-*-1.noarch.rpm
+sudo dnf install dist/redact-pdf-*-1.noarch.rpm
 ```
 
 ### Mac OS X
@@ -47,8 +47,8 @@ Install dependencies:
 brew install imagemagick exiftool gs
 ```
 
-Install pdf-redact-tools systemwide:
+Install redact-pdf systemwide:
 
 ```sh
-sudo cp pdf-redact-tools /usr/local/bin
+sudo cp redact-pdf /usr/local/bin
 ```
