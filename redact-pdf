@@ -50,16 +50,22 @@ class PDFRedactTools(object):
 
         # make dir for pages
         if os.path.isdir(self.pages_dirname):
-            print('Error: the directory {} already exists, you must delete it before exploding'.format(
-                self.pages_dirname))
+            print(
+                f'Error: the directory {self.pages_dirname} already exists, you must delete it before exploding'
+            )
             return False
         else:
             os.makedirs(self.pages_dirname, 0o700)
 
         # convert PDF to PNGs
         print('Converting PDF to PNGs')
+        hash = self.sha256()
         subprocess.call([
             'convert',
+            '-pointsize', '6',
+            '-annotate', '+0+6', f'Original SHA256:\n{hash}',
+            '-gravity', 'South',
+            # Do not default to grayspace
             '-colorspace', 'RGB',
             '-density', str(density),
             self.pdf_filename,
@@ -128,10 +134,23 @@ class PDFRedactTools(object):
             cur_digits = len(str(n))
             if cur_digits < digits:
                 new_n = '0'*(digits - cur_digits) + str(n)
-                os.rename(filename_template.format(n),
-                          filename_template.format(new_n))
+                os.rename(
+                    filename_template.format(n),
+                    filename_template.format(new_n)
+                )
 
         return True
+
+    def sha256(self):
+        # Echo out SHA256
+        print('Computing SHA256')
+        output = subprocess.check_output([
+            'sha256sum',
+            self.pdf_filename
+        ]).decode('utf-8')
+
+        hash = output.split(' ')[0]
+        return hash
 
     def merge(self):
         if not self.pdf_filename:
@@ -140,7 +159,7 @@ class PDFRedactTools(object):
 
         # make sure pages directory exists
         if not os.path.isdir(self.pages_dirname):
-            print(f'Error: {pages_dirname} is not a directory')
+            print(f'Error: {self.pages_dirname} is not a directory')
             return False
 
         # convert PNGs to PDF
@@ -248,7 +267,9 @@ def main():
             pdfrt.set_pdf_filename(explode_filename)
             if pdfrt.explode(density, achromatic):
                 print()
-                print(f'All done, now go edit PNGs in {pdfrt.pages_dirname} to redact and then run:')
+                print(
+                    f'All done, now go edit PNGs in {pdfrt.pages_dirname} to redact and then run:'
+                )
                 print(f'redact-pdf -m {pdfrt.pdf_filename}')
         else:
             print(
@@ -262,13 +283,11 @@ def main():
             pdfrt.set_pdf_filename(merge_filename)
             if pdfrt.merge():
                 print(
-                    "All done, your final output is {}".format(
-                        pdfrt.output_filename)
+                    f'All done, your final output is {pdfrt.output_filename}'
                 )
         else:
             print(
-                merge_filename,
-                ' does not appear to be a PDF file, will not process'
+                f'{merge_filename} does not appear to be a PDF file, will not process'
             )
 
     # sanitize
@@ -281,14 +300,11 @@ def main():
                     shutil.rmtree(pdfrt.pages_dirname)
 
                     print(
-                        "All done, your final output is {}".format(
-                            pdfrt.output_filename
-                        )
+                        f'All done, your final output is {pdfrt.output_filename}'
                     )
         else:
             print(
-                sanitize_filename,
-                ' does not appear to be a PDF file, will not process'
+                f'{sanitize_filename} does not appear to be a PDF file, will not process'
             )
 
 
